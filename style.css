@@ -111,7 +111,7 @@ html,body {
       left: 12px;
       top: 60px;
       z-index: 11;
-      background: rgba(0,0,0,0.75);
+      background: rgba(0,0,0,0.0);
       color: #fff;
       border: none;
       padding: 10px 16px;
