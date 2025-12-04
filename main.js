@@ -1,4 +1,4 @@
-// Main renderer + bloom pipeline (WebGL1) - Multi-Spiromorph
+// Main renderer + bloom pipeline (WebGL1) - Multi-Spiromorph with Individual Controls
 const canvas = document.getElementById('glcanvas');
 const gl = canvas.getContext('webgl', { antialias: true });
 if(!gl) alert('WebGL not supported');
@@ -74,23 +74,30 @@ const defaultOptions = {
 
 // Multi-spiromorph management
 const spiromorphs = [];
+let nextId = 0;
 
 function createSpiromorph() {
   const opts = Object.assign({}, defaultOptions, {
     window_width: window.innerWidth,
     window_height: window.innerHeight
   });
-  return new Spiromorph(opts);
+  const spiro = new Spiromorph(opts);
+  spiro.id = nextId++;
+  return spiro;
 }
 
 function addSpiromorph() {
-  spiromorphs.push(createSpiromorph());
+  const spiro = createSpiromorph();
+  spiromorphs.push(spiro);
+  createSpiromorphUI(spiro);
   updateSpiromorphCount();
 }
 
-function removeSpiromorph() {
-  if (spiromorphs.length > 1) {
-    spiromorphs.pop();
+function removeSpiromorph(id) {
+  const index = spiromorphs.findIndex(s => s.id === id);
+  if (index !== -1 && spiromorphs.length > 1) {
+    spiromorphs.splice(index, 1);
+    removeSpiromorphUI(id);
     updateSpiromorphCount();
   }
 }
@@ -100,14 +107,54 @@ function updateSpiromorphCount() {
   if (countEl) countEl.textContent = spiromorphs.length;
 }
 
+function createSpiromorphUI(spiro) {
+  const container = document.getElementById('spiromorphControls');
+  
+  const section = document.createElement('div');
+  section.className = 'param-section spiromorph-item';
+  section.id = `spiro-${spiro.id}`;
+  
+  section.innerHTML = `
+    <h3 onclick="toggleSection(this)">SPIROMORPH ${spiro.id + 1}</h3>
+    <div class="param-content">
+      <button onclick="removeSpiromorph(${spiro.id})" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #a33; color: white; border: 1px solid #c44; border-radius: 4px; cursor: pointer;">Remove This Spiromorph</button>
+      
+      <label for="spd-${spiro.id}">Speed</label>
+      <input id="spd-${spiro.id}" type="range" min="0.01" max="1" step="0.01" value="0.15" oninput="updateSpiroValue(${spiro.id}, 'spd')">
+      <output id="spd-${spiro.id}-value">0.15</output>
+      
+      <label for="amp-${spiro.id}">Amplitude</label>
+      <input id="amp-${spiro.id}" type="range" min="0.1" max="2.5" step="0.01" value="0.8" oninput="updateSpiroValue(${spiro.id}, 'amp')">
+      <output id="amp-${spiro.id}-value">0.8</output>
+
+      <label for="elements-${spiro.id}">No. of elements</label>
+      <input id="elements-${spiro.id}" type="range" min="1" max="6" step="1" value="6" oninput="updateSpiroValue(${spiro.id}, 'elements')">
+      <output id="elements-${spiro.id}-value">6</output>
+
+      <label for="envinphase-${spiro.id}">Envelopes in phase</label>
+      <input id="envinphase-${spiro.id}" type="range" min="1" max="5" step="1" value="3" oninput="updateSpiroValue(${spiro.id}, 'envinphase')">
+      <output id="envinphase-${spiro.id}-value">3</output>
+    </div>
+  `;
+  
+  container.appendChild(section);
+}
+
+function removeSpiromorphUI(id) {
+  const section = document.getElementById(`spiro-${id}`);
+  if (section) section.remove();
+}
+
+window.updateSpiroValue = function(id, param) {
+  const input = document.getElementById(`${param}-${id}`);
+  const output = document.getElementById(`${param}-${id}-value`);
+  if (output) output.textContent = input.value;
+};
+
 // Initialize with 1 spiromorph
 addSpiromorph();
 
-// UI bindings
-const spdEl = document.getElementById('spd');
-const ampEl = document.getElementById('amp');
-const elementsEl = document.getElementById('elements');
-const envInPhaseEl = document.getElementById('envinphase');
+// Bloom UI bindings
 const thresholdEl = document.getElementById('threshold');
 const itersEl = document.getElementById('iters');
 const intensityEl = document.getElementById('intensity');
@@ -212,17 +259,18 @@ function frame(now){
   const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-  // Update all spiromorphs with UI parameters
-  const speed = parseFloat(spdEl.value);
-  const amplitude = parseFloat(ampEl.value);
-  const elements = parseFloat(elementsEl.value);
-  const envInPhase = parseFloat(envInPhaseEl.value);
-
+  // Update each spiromorph with its individual parameters
   spiromorphs.forEach(spi => {
-    spi.options.envelope_speed = speed;
-    spi.options.amplitude = amplitude;
-    spi.options.number_of_elements = elements;
-    spi.options.envelopes_in_phase = envInPhase;
+    const spdEl = document.getElementById(`spd-${spi.id}`);
+    const ampEl = document.getElementById(`amp-${spi.id}`);
+    const elementsEl = document.getElementById(`elements-${spi.id}`);
+    const envInPhaseEl = document.getElementById(`envinphase-${spi.id}`);
+
+    if (spdEl) spi.options.envelope_speed = parseFloat(spdEl.value);
+    if (ampEl) spi.options.amplitude = parseFloat(ampEl.value);
+    if (elementsEl) spi.options.number_of_elements = parseFloat(elementsEl.value);
+    if (envInPhaseEl) spi.options.envelopes_in_phase = parseFloat(envInPhaseEl.value);
+    
     spi.reinit(window.innerHeight * (window.devicePixelRatio || 1));
     spi.Update(dt);
   });
