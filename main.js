@@ -65,8 +65,8 @@ const defaultOptions = {
   window_width: window.innerWidth,
   window_height: window.innerHeight,
   base_resolution: 1024,
-  number_of_elements: 6,
-  envelopes_in_phase: 3,
+  number_of_elements: 4,
+  envelopes_in_phase: 2,
   amplitude: 0.8,
   envelope_speed: 0.15,
   element_freq_max: 12
